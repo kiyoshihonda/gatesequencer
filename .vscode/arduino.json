@@ -1,0 +1,6 @@
+{
+    "port": "/dev/tty.usbserial-14310",
+    "board": "arduino:avr:nano",
+    "configuration": "cpu=atmega328",
+    "sketch": "modular.ino"
+}
