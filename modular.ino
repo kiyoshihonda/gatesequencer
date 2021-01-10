@@ -124,6 +124,8 @@ void setup(){
        setIcon();
       mode=false;
       maxstep=8;
+
+      //Serial.println( EEPROM.length());
          
 }
 int innerCLock=0;
@@ -337,7 +339,7 @@ int clickTackNoAA;
 int countClock=0;
 int button1Count=0;
 int analogcount=0;
-
+int longpressB=0;
 void setInfo(int num){
       for(int y=0;y<8;y++){
             VRAM_BACKUP[y]=VRAM[y];
@@ -449,28 +451,40 @@ void loop(){
       if(button1>=-10 && button1<350){
             button1Count++;
             clickTackNoAA=0;
+            longpressB++;
       }else if(button1>=350 && button1<900){
             button1Count++;
             clickTackNoAA=1;
+            longpressB++;
       }
       if(lastClickA[0] >=0 && lastClickA[0]==lastClickA[1] && lastClickA[0]==lastClickA[2] && clickTackNoAA==-1 ){//ONpressUP
-            Serial.println( "up "+String(button1Count));
-            if(lastClickA[0]==0){
-                  channel++;
-                  page=0;
-                  if(channel>2)channel=0;
-                  setLED();
-                  setInfo(100+5-(channel*2+page));
-                  Serial.println( "ボタン  青 " +String(channel));
-            }
-            if(lastClickA[0]==1){
-                  page++;
-                  if(page>1)page=0;
-                  setLED();
-                  setInfo(100+5-(channel*2+page));
-                  Serial.println( "ボタン黄色" +page);
-            }
-            button1Count=0;
+           
+             if(longpressB>1200){
+                    if(lastClickA[0]==0){
+                        Serial.println( "LONG  ボタン  青 ");
+                  }
+                  if(lastClickA[0]==1){
+                        Serial.println( "LONG ボタン黄色");
+                  }
+             }else{
+                  if(lastClickA[0]==0){
+                        channel++;
+                        page=0;
+                        if(channel>2)channel=0;
+                        setLED();
+                        setInfo(100+5-(channel*2+page));
+                        Serial.println( "ボタン  青 " +String(channel));
+                  }
+                  if(lastClickA[0]==1){
+                        page++;
+                        if(page>1)page=0;
+                        setLED();
+                        setInfo(100+5-(channel*2+page));
+                        Serial.println( "ボタン黄色" +page);
+                  }
+             }
+             longpressB=0;
+              button1Count=0;
       }
       for(int i=0;i<4;i++){
             lastClickA[i+1]=lastClickA[i];
@@ -503,7 +517,7 @@ void loop(){
             
       }
       if(lastClick[0] >=0 && lastClick[0]==lastClick[1] && lastClick[0]==lastClick[2] && clickTackNo==-1 ){//ONpressUP
-            if(longpressA>1500){
+            if(longpressA>1200){
                   maxstep=lastClick[0]+1 + page*8;
                   setInfo(maxstep);
                   Serial.println("long "+String(maxstep));
@@ -538,9 +552,7 @@ void loop(){
 
 int time_data[3]={0,0,0};
 void time_count(void) {
-      if(nowInfoDisplay>0){
-            return;
-      }
+      
        if(!mode){//内部クロックモードのときの、つまみ値からテンポ設定
              innerCLock++;
            //  vol = (int)(  (float)((float)vol/(float)1024)*(float)  );//400-1000
@@ -561,7 +573,9 @@ void time_count(void) {
                               case 2:analogWrite( A_PIN_OUT3, 0 ); break;
                         }
                         time_data[i]=0;
-                        setLED();
+                        if(nowInfoDisplay==0){
+                              setLED();
+                        }
                   }
             }
        }
@@ -574,7 +588,9 @@ void triggerStart(){
             zeroZcount=0;
       }
       leds=0;
-      offPixel(nowPoint/8,nowPoint%8);
+      if(nowInfoDisplay==0){
+            offPixel(nowPoint/8,nowPoint%8);
+      }
       nowPoint++;
       if(nowPoint>=maxstep){
             nowPoint=0;
@@ -591,8 +607,9 @@ void triggerStart(){
       shiftOut(dsPin, srclkPin, LSBFIRST, (tiggerStep[channel] | (1<<nowPoint) )); //シフト演算を使って点灯するLEDを選択
       digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
       */
-      onPixel(nowPoint/8,nowPoint%8);
-                  
+     if(nowInfoDisplay==0){
+            onPixel(nowPoint/8,nowPoint%8);
+     }            
 }
 void setLED(){
       digitalWrite(rclkPin, LOW);
