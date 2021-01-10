@@ -88,8 +88,10 @@ void setup(){
 
 
       pinMode(A_PIN_OUT1, OUTPUT); 
+      pinMode(A_PIN_OUT2, OUTPUT); 
+      pinMode(A_PIN_OUT3, OUTPUT); 
 
-      analogReference(DEFAULT);
+    
 
       for(int i=0;i<5;i++){
             lastClick[i]=-2*i;
@@ -111,7 +113,8 @@ void setup(){
       shiftOut(dsPin, srclkPin, LSBFIRST, 0x000); //シフト演算を使って点灯するLEDを選択
       digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
      
-   //   analogReference(INTERNAL); //アナログ入力安定のおまじない
+       analogReference(DEFAULT);
+  //analogReference(INTERNAL); //アナログ入力安定のおまじない
 
       MsTimer2::set(10, time_count);
       MsTimer2::start();      
@@ -174,9 +177,14 @@ int test=0;
 int vol;
 int clickTackNoAA;
 int countClock=0;
+int button1Count=0;
+int analogcount=0;
 //------------------------------ loop
 void loop(){
      //  Serial.println( taktSW1to4 );
+     analogcount++;
+
+
      if(nowOpening){
             icontime++;
             if(icontime>15000){
@@ -188,26 +196,26 @@ void loop(){
      }
       drawMatrixLED();
 
-      
-      //入力の平均からサンプル化 ノイズ対策
-      for(int i=n-1;i>0;i--) f[i] = f[i-1];//過去１０回分の値を記録
-      f[0] = analogRead(A_CLOCK_INPUT);
-      ave = 0;
-      for(int i=0;i<n;i++) ave += f[i];        //総和を求める
-      ave = (float)ave/n;   //標本数で割って平均を求める
-      Serial.println( analogRead(A_CLOCK_INPUT) ) ;
-      //CLOCK入力がある程度なくなったら、スタート地点にもどる（リセット処理）
-      if(nowPlay && ave==0){
-            zeroZcount++;
-            if(zeroZcount>8000){
-                  Serial.println( String( "  ---- STOP ----- "));
+      if(analogcount<100){
+            //入力の平均からサンプル化 ノイズ対策
+            for(int i=n-1;i>0;i--) f[i] = f[i-1];//過去１０回分の値を記録
+            f[0] = analogRead(A_CLOCK_INPUT);
+            ave = 0;
+            for(int i=0;i<n;i++) ave += f[i];        //総和を求める
+            ave = (float)ave/n;   //標本数で割って平均を求める
+            //Serial.println( analogRead(A_CLOCK_INPUT) ) ;
+            //CLOCK入力がある程度なくなったら、スタート地点にもどる（リセット処理）
+            if(nowPlay && ave==0){
+                  zeroZcount++;
+                  if(zeroZcount>8000){
+                        Serial.println( String( "  ---- STOP ----- "));
+                        zeroZcount=0;
+                        nowPlay=false;
+                  }
+            }else{
                   zeroZcount=0;
-                  nowPlay=false;
             }
-      }else{
-            zeroZcount=0;
       }
-
       
 
 
@@ -216,7 +224,7 @@ void loop(){
                   triggerStart();
             }
       }
-     // Serial.println( f[0]);
+     //Serial.println( analogRead(2));
       if(mode && f[0]>400 && f[0]<750){
             countClock++;
             if(countClock>30){
@@ -243,12 +251,14 @@ void loop(){
       //Serial.println( button1);
       clickTackNoAA=-1;
       if(button1>=-10 && button1<350){
+            button1Count++;
             clickTackNoAA=0;
       }else if(button1>=350 && button1<900){
+            button1Count++;
             clickTackNoAA=1;
       }
       if(lastClickA[0] >=0 && lastClickA[0]==lastClickA[1] && lastClickA[0]==lastClickA[2] && clickTackNoAA==-1 ){//ONpressUP
-            
+            Serial.println( "up "+String(button1Count));
             if(lastClickA[0]==0){
                   channel++;
                   if(channel>2)channel=0;
@@ -258,6 +268,7 @@ void loop(){
             if(lastClickA[0]==1){
                   Serial.println( "ボタン黄色" );
             }
+            button1Count=0;
       }
       for(int i=0;i<4;i++){
             lastClickA[i+1]=lastClickA[i];
@@ -306,20 +317,22 @@ void loop(){
       
 
 
-
-      vol= analogRead(A_VOLUME);
+      if(analogcount>300 && analogcount<400){
+            vol= analogRead(A_VOLUME);
+            
+      }
+      if(analogcount>500){
+             analogcount=0;
+      }
 
 }
 
 int time_data[3]={0,0,0};
 void time_count(void) {
-      
-      
        if(!mode){//内部クロックモードのときの、つまみ値からテンポ設定
              innerCLock++;
-             vol = (int)(  (float)((float)vol/(float)1024)*(float)500+400  );//400-1000
-          //   Serial.println( vol);
-             if(innerCLock > (1024-vol)/8 ){
+           //  vol = (int)(  (float)((float)vol/(float)1024)*(float)  );//400-1000
+             if(innerCLock > ((1050-vol)+20)/12 ){
                   triggerStart();
                   innerCLock=0;
              }
