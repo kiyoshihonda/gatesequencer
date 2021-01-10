@@ -224,10 +224,14 @@ void loop(){
                   triggerStart();
             }
       }
+      if(mode){
+              Serial.println(f[0] );
+      }
      //Serial.println( analogRead(2));
-      if(mode && f[0]>400 && f[0]<750){
+       if(mode && f[0]>1000){
+           
             countClock++;
-            if(countClock>30){
+            if(countClock>50){
                   countClock=0;
                   mode=false;
                   Serial.println( "内部クロック" );
