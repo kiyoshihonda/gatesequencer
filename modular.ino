@@ -1,6 +1,6 @@
 #include "MsTimer2.h"
 #include "SoftwareSerial.h"
-
+#include <EEPROM.h>
 //const int led=3;
 
 
@@ -34,7 +34,7 @@ const int A_BUTTON1=5; //設定ボタン１ 2
 const int A_VOLUME=0; //つまみs
 
 
-
+int longpressA=0;
 //------
 const float D_V_OUT = 5;      //出力電圧
 
@@ -67,13 +67,14 @@ int lastClickA[5];
 int tiggerStep[4];
 
 bool mode=false;//false 内部クロック  true 外部クロック
-
+int nowInfoDisplay=0;
 bool nowOpening=true;
 //------------------------------ setup
 void setup(){
       nowOpening=true;
       Serial.begin(115200);
-
+      longpressA=0;
+      nowInfoDisplay=0;
       pinMode(rclkPin, OUTPUT);   //11番ピンをOUTPUTとして定義
       pinMode(dsPin, OUTPUT);     //12番ピンをOUTPUTとして定義
       pinMode(srclkPin, OUTPUT);  //10番ピンをOUTPUTとして定義
@@ -130,6 +131,7 @@ int taktSW1to4,taktSW5to8;
 int button1,button2;
 int clickTackNo;
 byte VRAM[8];
+byte VRAM_BACKUP[8];
 byte LOGO[8] = {
       B11111111,
       B01000001,
@@ -140,6 +142,162 @@ byte LOGO[8] = {
       B01000001,
       B11111111
 };
+byte NUMBERICON[18][8] = {{
+      B11111111,
+      B11111001,
+      B11111101,
+      B11111101,
+      B11111101,
+      B11111101,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110001,
+      B11111101,
+      B11110001,
+      B11110111,
+      B11110001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110001,
+      B11111101,
+      B11110001,
+      B11111101,
+      B11110001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110101,
+      B11110101,
+      B11110101,
+      B11110001,
+      B11111101,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110001,
+      B11110111,
+      B11110001,
+      B11111101,
+      B11110001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110001,
+      B11110111,
+      B11110001,
+      B11110101,
+      B11110001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110001,
+      B11110101,
+      B11111101,
+      B11111101,
+      B11111101,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110001,
+      B11110101,
+      B11110001,
+      B11110101,
+      B11110001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11110001,
+      B11110101,
+      B11110001,
+      B11111101,
+      B11110001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11010001,
+      B11010101,
+      B11010101,
+      B11010101,
+      B11010001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11011101,
+      B11011101,
+      B11011101,
+      B11011101,
+      B11011101,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11010001,
+      B11011101,
+      B11010001,
+      B11010111,
+      B11010001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11010001,
+      B11011101,
+      B11010001,
+      B11011101,
+      B11010001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11010101,
+      B11010101,
+      B11010101,
+      B11010001,
+      B11011101,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11010001,
+      B11010111,
+      B11010001,
+      B11011101,
+      B11010001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11010001,
+      B11010111,
+      B11010001,
+      B11010101,
+      B11010001,
+      B11111111,
+      B11111111
+},{
+      B11111111,
+      B11010001,
+      B11010101,
+      B11011101,
+      B11011101,
+      B11011101,
+      B11111111,
+      B11111111
+}
+};
+
 int line=0;
 int icontime=0;
 void drawMatrixLED(){
@@ -179,6 +337,29 @@ int clickTackNoAA;
 int countClock=0;
 int button1Count=0;
 int analogcount=0;
+
+void setInfo(int num){
+      for(int y=0;y<8;y++){
+            VRAM_BACKUP[y]=VRAM[y];
+      }
+      if(num<100){
+            for(int y=0;y<8;y++){
+                  VRAM[y]=NUMBERICON[num-1][y];
+            }
+      }else{
+            num= num-100;
+            for(int y=0;y<8;y++){
+                  VRAM[y]=VRAM[y] & (0xffff ^ (1<<num));
+            }
+      }
+      drawMatrixLED();
+      nowInfoDisplay=1;
+}
+void backVram(){
+      for(int y=0;y<8;y++){
+            VRAM[y]=VRAM_BACKUP[y];
+      }
+}
 //------------------------------ loop
 void loop(){
      //  Serial.println( taktSW1to4 );
@@ -193,6 +374,17 @@ void loop(){
             }
             drawMatrixLED();
             return;
+     }
+     if(nowInfoDisplay>0){
+           nowInfoDisplay++;
+           if(nowInfoDisplay>=3000){
+                 nowInfoDisplay=0;
+                 Serial.println("endende");
+                 eraseAll();
+                 backVram();
+           }
+           drawMatrixLED();
+           return;
      }
       drawMatrixLED();
 
@@ -265,12 +457,18 @@ void loop(){
             Serial.println( "up "+String(button1Count));
             if(lastClickA[0]==0){
                   channel++;
+                  page=0;
                   if(channel>2)channel=0;
                   setLED();
+                  setInfo(100+5-(channel*2+page));
                   Serial.println( "ボタン  青 " +String(channel));
             }
             if(lastClickA[0]==1){
-                  Serial.println( "ボタン黄色" );
+                  page++;
+                  if(page>1)page=0;
+                  setLED();
+                  setInfo(100+5-(channel*2+page));
+                  Serial.println( "ボタン黄色" +page);
             }
             button1Count=0;
       }
@@ -286,33 +484,40 @@ void loop(){
       //Serial.println( taktSW5to8 );
       clickTackNo=-1;
       if(taktSW1to4>=-10 && taktSW1to4<350){
-            clickTackNo=0;
+            clickTackNo=0;longpressA++;
       }else if(taktSW1to4>=350 && taktSW1to4<590){
-            clickTackNo=1;
+            clickTackNo=1;longpressA++;
       }else if(taktSW1to4>=590 && taktSW1to4<720){
-            clickTackNo=2;
+            clickTackNo=2;longpressA++;
       }else if(taktSW1to4>=720 && taktSW1to4<790){
-            clickTackNo=3;
+            clickTackNo=3;longpressA++;
       }
       if(taktSW5to8>=-10 && taktSW5to8<350){
-            clickTackNo=4;
+            clickTackNo=4;longpressA++;
       }else if(taktSW5to8>=350 && taktSW5to8<590){
-            clickTackNo=5;
+            clickTackNo=5;longpressA++;
       }else if(taktSW5to8>=590 && taktSW5to8<720){
-            clickTackNo=6;
+            clickTackNo=6;longpressA++;
       }else if(taktSW5to8>=720 && taktSW5to8<790){
-            clickTackNo=7;
+            clickTackNo=7;longpressA++;
             
       }
       if(lastClick[0] >=0 && lastClick[0]==lastClick[1] && lastClick[0]==lastClick[2] && clickTackNo==-1 ){//ONpressUP
-            tiggerStep[channel] ^= (1 <<lastClick[0]) ;
-            reversePixel(2+channel*2,lastClick[0]);
+            if(longpressA>1500){
+                  maxstep=lastClick[0]+1 + page*8;
+                  setInfo(maxstep);
+                  Serial.println("long "+String(maxstep));
+            }else{
+                  tiggerStep[channel] ^= (1 <<(lastClick[0]+page*8)) ;
+                  reversePixel(2+channel*2+page,lastClick[0]);
 
-            setLED();
-            if(lastClick[0]==6){
+                  setLED();
+                  if(lastClick[0]==6){
+                  }
+                  if(lastClick[0]==7){
+                  }
             }
-            if(lastClick[0]==7){
-            }
+            longpressA=0;
       }
       for(int i=0;i<4;i++){
             lastClick[i+1]=lastClick[i];
@@ -333,6 +538,9 @@ void loop(){
 
 int time_data[3]={0,0,0};
 void time_count(void) {
+      if(nowInfoDisplay>0){
+            return;
+      }
        if(!mode){//内部クロックモードのときの、つまみ値からテンポ設定
              innerCLock++;
            //  vol = (int)(  (float)((float)vol/(float)1024)*(float)  );//400-1000
@@ -366,9 +574,9 @@ void triggerStart(){
             zeroZcount=0;
       }
       leds=0;
-      offPixel(0,nowPoint);
+      offPixel(nowPoint/8,nowPoint%8);
       nowPoint++;
-      if(nowPoint>7){
+      if(nowPoint>=maxstep){
             nowPoint=0;
       }
       //Serial.println( nowPoint);
@@ -383,12 +591,13 @@ void triggerStart(){
       shiftOut(dsPin, srclkPin, LSBFIRST, (tiggerStep[channel] | (1<<nowPoint) )); //シフト演算を使って点灯するLEDを選択
       digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
       */
-      onPixel(0,nowPoint);
+      onPixel(nowPoint/8,nowPoint%8);
                   
 }
 void setLED(){
       digitalWrite(rclkPin, LOW);
-      shiftOut(dsPin, srclkPin, LSBFIRST, tiggerStep[channel]); //シフト演算を使って点灯するLEDを選択
+      
+      shiftOut(dsPin, srclkPin, LSBFIRST, (tiggerStep[channel]>>page*8) & 0x00FF ); //シフト演算を使って点灯するLEDを選択
       digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
 
 }
