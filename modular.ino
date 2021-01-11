@@ -64,7 +64,7 @@ int zeroZcount;
 int lastClick[5];
 int lastClickA[5];
 
-int tiggerStep[4];
+unsigned int tiggerStep[4];
 
 bool mode=false;//false 内部クロック  true 外部クロック
 int nowInfoDisplay=0;
@@ -398,6 +398,7 @@ void setInfo(int num){
 void backVram(){
       for(int y=0;y<8;y++){
             VRAM[y]=VRAM_BACKUP[y];
+            VRAM[y] = VRAM[y] | 0xC0;
       }
 }
 //------------------------------ loop
@@ -593,6 +594,7 @@ void loop(){
                         maxstep=lastClick[0]+1 + page*8;
                         setInfo(maxstep);
                         Serial.println("long "+String(maxstep));
+                        resetLED();
                   }else{
                         tiggerStep[channel] ^= (1 <<(lastClick[0]+page*8)) ;
                         reversePixel(2+channel*2+page,lastClick[0]);
@@ -669,6 +671,7 @@ void triggerStart(){
       }
       //Serial.println( nowPoint);
       for(int i=0;i<3;i++){
+            Serial.println( (tiggerStep[i] & (1<<nowPoint) ));
             if( (tiggerStep[i] & (1<<nowPoint) )>0){    
             //Serial.println( String( "  ---- PLAY ----- ")+ String(test));
             //test++;
@@ -697,7 +700,13 @@ void selectModeLED(){
       digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
 
 }
+void resetLED(){
+      digitalWrite(rclkPin, LOW);
+      
+      shiftOut(dsPin, srclkPin, LSBFIRST, 0x00); //シフト演算を使って点灯するLEDを選択
+      digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
 
+}
 void playGate(int ch){
       int v = (int) D_V_OUT * 51;
       switch(ch){
