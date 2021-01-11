@@ -429,7 +429,7 @@ void loop(){
      
       drawMatrixLED();
 
-      if(analogcount<100){
+      if(mode || analogcount<100){
             //入力の平均からサンプル化 ノイズ対策
             for(int i=n-1;i>0;i--) f[i] = f[i-1];//過去１０回分の値を記録
             f[0] = analogRead(A_CLOCK_INPUT);
@@ -455,21 +455,22 @@ void loop(){
       if(mode && f[0]>500){
             if(lastAnalog1<=500){
                   triggerStart();
+        //           Serial.println("TRIIGER" );
             }
-      }
-      if(mode){
-              Serial.println(f[0] );
       }
      //Serial.println( analogRead(2));
-       if(mode && f[0]>1000){
-           
-            countClock++;
-            if(countClock>50){
-                  countClock=0;
-                  mode=false;
-                  Serial.println( "内部クロック" );
-                  
-            }
+       if(mode ){
+           if(f[0]>1000){
+                  countClock++;
+                  if(countClock>300){
+                        countClock=0;
+                        mode=false;
+                        Serial.println( "内部クロック" );
+                        
+                   }
+           }else{
+                 countClock=0;
+           }
       }
       if(!mode && f[0]<500 && lastAnalog1<500){
             countClock++;
@@ -480,7 +481,7 @@ void loop(){
             }
       }
 
-      lastAnalog1=ave;
+      lastAnalog1=f[0];//ave;
 
 
       //--------------------------------------------
@@ -610,7 +611,7 @@ void loop(){
       
 
 
-      if(analogcount>300 && analogcount<400){
+      if(!mode &&  analogcount>300 && analogcount<400){
             vol= analogRead(A_VOLUME);
             
       }
