@@ -461,9 +461,11 @@ void loop(){
            
              if(longpressB>1200){
                     if(lastClickA[0]==0){
+                        saveData(0);
                         Serial.println( "LONG  ボタン  青 ");
                   }
                   if(lastClickA[0]==1){
+                        loadData(0);
                         Serial.println( "LONG ボタン黄色");
                   }
              }else{
@@ -629,4 +631,45 @@ void playGate(int ch){
       }
       
       nowON[ch]=true;
+}
+void saveData(int id){
+      EEPROM.write(0+id*10,tiggerStep[0] & 0x00FF);
+      EEPROM.write(1+id*10,(tiggerStep[0]>>8) & 0x00FF);
+      EEPROM.write(2+id*10,tiggerStep[1] & 0x00FF);
+      EEPROM.write(3+id*10,(tiggerStep[1]>>8) & 0x00FF);
+      EEPROM.write(4+id*10,tiggerStep[2] & 0x00FF);
+      EEPROM.write(5+id*10,(tiggerStep[2]>>8) & 0x00FF);
+      EEPROM.write(6+id*10,(maxstep & 0x00FF)) ;
+      Serial.println("SAVE "+String(id));
+}
+void loadData(int id){
+      tiggerStep[0] = EEPROM.read(0+id*10) | (EEPROM.read(1+id*10)<<8)  ;
+      tiggerStep[1] = EEPROM.read(2+id*10) | (EEPROM.read(3+id*10)<<8)  ;
+      tiggerStep[2] = EEPROM.read(4+id*10) | (EEPROM.read(5+id*10)<<8)  ;
+      maxstep= EEPROM.read(6+id*10);
+      Serial.println("LOAD "+String(id));
+
+      Serial.println(tiggerStep[0]);
+
+      channel=0;
+      page=0;
+      setLED();
+
+      eraseAll();
+
+      setDataToVRAM();
+}
+void setDataToVRAM(){
+      
+      for(int y=0;y<8;y++){
+           VRAM[y]=VRAM[y] &  (0xFF ^ ( (tiggerStep[0]>>y) & B00000001 ) << 5);
+           VRAM[y]=VRAM[y] &  (0xFF ^ ( (tiggerStep[0]>>y+8) & B00000001 ) << 4);
+
+           VRAM[y]=VRAM[y] &  (0xFF ^ ( (tiggerStep[1]>>y) & B00000001 ) << 3);
+           VRAM[y]=VRAM[y] &  (0xFF ^ ( (tiggerStep[1]>>y+8) & B00000001 ) << 2);
+
+           VRAM[y]=VRAM[y] &  (0xFF ^ ( (tiggerStep[2]>>y) & B00000001 ) << 1);
+           VRAM[y]=VRAM[y] &  (0xFF ^ ( (tiggerStep[2]>>y+8) & B00000001 ) );
+      }
+      
 }
