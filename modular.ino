@@ -46,7 +46,7 @@ float ave = 0;
 //MsTimerの割り込み処理関連
 void time_count(void);
 void LEDVIEW(void);
-
+int selectMode=0;
 //シフトレジスタで利用
 byte leds = 0; //ledsをbyte型としてb00000000で定義
 
@@ -71,6 +71,7 @@ int nowInfoDisplay=0;
 bool nowOpening=true;
 //------------------------------ setup
 void setup(){
+      selectMode=0;
       nowOpening=true;
       Serial.begin(115200);
       longpressA=0;
@@ -144,7 +145,7 @@ byte LOGO[8] = {
       B01000001,
       B11111111
 };
-byte NUMBERICON[18][8] = {{
+byte NUMBERICON[20][8] = {{
       B11111111,
       B11111001,
       B11111101,
@@ -297,6 +298,36 @@ byte NUMBERICON[18][8] = {{
       B11011101,
       B11111111,
       B11111111
+},
+{           //SELECT 
+      B01111111,
+      B01001001,
+      B01001001,
+      B01111111,
+      B01001001,
+      B01001001,
+      B01111111,
+      B01111111
+},
+{           //SAVE 
+      B11111111,
+      B11110111,
+      B11110111,
+      B11010101,
+      B11100011,
+      B11110111,
+      B11011101,
+      B11000001
+},
+{           //LOAD 
+      B11111111,
+      B11110111,
+      B11100011,
+      B11010101,
+      B11110111,
+      B11110111,
+      B11011101,
+      B11000001
 }
 };
 
@@ -348,14 +379,21 @@ void setInfo(int num){
             for(int y=0;y<8;y++){
                   VRAM[y]=NUMBERICON[num-1][y];
             }
-      }else{
+            nowInfoDisplay=1;
+      }else if(num<1000){
             num= num-100;
             for(int y=0;y<8;y++){
                   VRAM[y]=VRAM[y] & (0xffff ^ (1<<num));
             }
+            nowInfoDisplay=1;
+      }else{
+            selectMode=num-1000;
+            for(int y=0;y<8;y++){
+                  VRAM[y]=NUMBERICON[17][y];
+            }
+            selectModeLED();
       }
       drawMatrixLED();
-      nowInfoDisplay=1;
 }
 void backVram(){
       for(int y=0;y<8;y++){
@@ -388,6 +426,7 @@ void loop(){
            drawMatrixLED();
            return;
      }
+     
       drawMatrixLED();
 
       if(analogcount<100){
@@ -460,30 +499,47 @@ void loop(){
       if(lastClickA[0] >=0 && lastClickA[0]==lastClickA[1] && lastClickA[0]==lastClickA[2] && clickTackNoAA==-1 ){//ONpressUP
            
              if(longpressB>1200){
-                    if(lastClickA[0]==0){
-                        saveData(0);
-                        Serial.println( "LONG  ボタン  青 ");
-                  }
-                  if(lastClickA[0]==1){
-                        loadData(0);
-                        Serial.println( "LONG ボタン黄色");
-                  }
+                   if(!selectMode){
+                        if(lastClickA[0]==0){
+                              setInfo(1001) ;
+                        // saveData(0);
+                              Serial.println( "LONG  ボタン  青 ");
+                        }
+                        if(lastClickA[0]==1){
+                              setInfo(1002) ;
+                              
+                        // loadData(0);
+                              Serial.println( "LONG ボタン黄色");
+                        }
+                   }
              }else{
-                  if(lastClickA[0]==0){
-                        channel++;
-                        page=0;
-                        if(channel>2)channel=0;
-                        setLED();
-                        setInfo(100+5-(channel*2+page));
-                        Serial.println( "ボタン  青 " +String(channel));
-                  }
-                  if(lastClickA[0]==1){
-                        page++;
-                        if(page>1)page=0;
-                        setLED();
-                        setInfo(100+5-(channel*2+page));
-                        Serial.println( "ボタン黄色" +page);
-                  }
+                   if(selectMode){
+                         if(lastClickA[0]==0){//青 CANCEL
+                              setLED();
+                              eraseAll();
+                              setDataToVRAM();
+                         }
+                         if(lastClickA[0]==1){//黄色　 RESET
+                               resetData();
+                         }
+                         selectMode=0;
+                   }else{
+                        if(lastClickA[0]==0){
+                              channel++;
+                              page=0;
+                              if(channel>2)channel=0;
+                              setLED();
+                              setInfo(100+5-(channel*2+page));
+                              Serial.println( "ボタン  青 " +String(channel));
+                        }
+                        if(lastClickA[0]==1){
+                              page++;
+                              if(page>1)page=0;
+                              setLED();
+                              setInfo(100+5-(channel*2+page));
+                              Serial.println( "ボタン黄色" +page);
+                        }
+                   }
              }
              longpressB=0;
               button1Count=0;
@@ -519,20 +575,32 @@ void loop(){
             
       }
       if(lastClick[0] >=0 && lastClick[0]==lastClick[1] && lastClick[0]==lastClick[2] && clickTackNo==-1 ){//ONpressUP
-            if(longpressA>1200){
-                  maxstep=lastClick[0]+1 + page*8;
-                  setInfo(maxstep);
-                  Serial.println("long "+String(maxstep));
+            if(selectMode==1){//save
+                 saveData(lastClick[0]);
+                 setLED();
+                 eraseAll();
+                 setDataToVRAM();
+                 setInfo(19);
+                 selectMode=0;
+            }else if(selectMode==2){//load
+                  loadData(lastClick[0]);
+                  selectMode=0;
+                  setInfo(20);
             }else{
-                  tiggerStep[channel] ^= (1 <<(lastClick[0]+page*8)) ;
-                  reversePixel(2+channel*2+page,lastClick[0]);
-
-                  setLED();
-                  if(lastClick[0]==6){
+                  if(longpressA>1200){
+                        maxstep=lastClick[0]+1 + page*8;
+                        setInfo(maxstep);
+                        Serial.println("long "+String(maxstep));
+                  }else{
+                        tiggerStep[channel] ^= (1 <<(lastClick[0]+page*8)) ;
+                        reversePixel(2+channel*2+page,lastClick[0]);
+                        setLED();
+                        if(lastClick[0]==6){
+                        }
+                        if(lastClick[0]==7){
+                        }
                   }
-                  if(lastClick[0]==7){
-                  }
-            }
+           }
             longpressA=0;
       }
       for(int i=0;i<4;i++){
@@ -575,7 +643,7 @@ void time_count(void) {
                               case 2:analogWrite( A_PIN_OUT3, 0 ); break;
                         }
                         time_data[i]=0;
-                        if(nowInfoDisplay==0){
+                        if(nowInfoDisplay==0 && selectMode==0){
                               setLED();
                         }
                   }
@@ -590,7 +658,7 @@ void triggerStart(){
             zeroZcount=0;
       }
       leds=0;
-      if(nowInfoDisplay==0){
+      if(nowInfoDisplay==0 && selectMode==0){
             offPixel(nowPoint/8,nowPoint%8);
       }
       nowPoint++;
@@ -609,7 +677,7 @@ void triggerStart(){
       shiftOut(dsPin, srclkPin, LSBFIRST, (tiggerStep[channel] | (1<<nowPoint) )); //シフト演算を使って点灯するLEDを選択
       digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
       */
-     if(nowInfoDisplay==0){
+     if(nowInfoDisplay==0 && selectMode==0){
             onPixel(nowPoint/8,nowPoint%8);
      }            
 }
@@ -620,7 +688,13 @@ void setLED(){
       digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
 
 }
+void selectModeLED(){
+      digitalWrite(rclkPin, LOW);
+      
+      shiftOut(dsPin, srclkPin, LSBFIRST, 0xFF ); //シフト演算を使って点灯するLEDを選択
+      digitalWrite(rclkPin, HIGH);               //送信終了後RCLKをHighにする
 
+}
 
 void playGate(int ch){
       int v = (int) D_V_OUT * 51;
@@ -651,6 +725,19 @@ void loadData(int id){
 
       Serial.println(tiggerStep[0]);
 
+      channel=0;
+      page=0;
+      setLED();
+
+      eraseAll();
+
+      setDataToVRAM();
+}
+void resetData(){
+      tiggerStep[0] = 0  ;
+      tiggerStep[1] = 0 ;
+      tiggerStep[2] = 0;
+      maxstep=8;
       channel=0;
       page=0;
       setLED();
