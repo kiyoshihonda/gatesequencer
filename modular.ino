@@ -460,7 +460,8 @@ void loop(){
       }
      //Serial.println( analogRead(2));
        if(mode ){
-           if(f[0]>1000){
+            // Serial.println( f[0]);
+           if(f[0]>950){
                   countClock++;
                   if(countClock>300){
                         countClock=0;
