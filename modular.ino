@@ -416,17 +416,7 @@ void loop(){
             drawMatrixLED();
             return;
      }
-     if(nowInfoDisplay>0){
-           nowInfoDisplay++;
-           if(nowInfoDisplay>=3000){
-                 nowInfoDisplay=0;
-                 Serial.println("endende");
-                 eraseAll();
-                 backVram();
-           }
-           drawMatrixLED();
-           return;
-     }
+     
      
       drawMatrixLED();
 
@@ -453,12 +443,7 @@ void loop(){
       
 
 
-      if(mode && f[0]>500){
-            if(lastAnalog1<=500){
-                  triggerStart();
-        //           Serial.println("TRIIGER" );
-            }
-      }
+      triggerExternal();
      //Serial.println( analogRead(2));
        if(mode ){
             // Serial.println( f[0]);
@@ -485,7 +470,16 @@ void loop(){
 
       lastAnalog1=f[0];//ave;
 
-
+      if(nowInfoDisplay>0){
+           nowInfoDisplay++;
+           if(nowInfoDisplay>=3000){
+                 nowInfoDisplay=0;
+                 Serial.println("endende");
+                 eraseAll();
+                 backVram();
+           }
+           return;
+     }
       //--------------------------------------------
       button1 = analogRead(A_BUTTON1);
       //Serial.println( button1);
@@ -623,7 +617,13 @@ void loop(){
       }
 
 }
-
+void triggerExternal(){
+      if(mode && f[0]>500){
+            if(lastAnalog1<=500){
+                  triggerStart();
+            }
+      }
+}
 int time_data[3]={0,0,0};
 void time_count(void) {
       
